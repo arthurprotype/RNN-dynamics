@@ -31,13 +31,13 @@ import pickle as pl
 
 # Environment
 
-task = 'PerceptualDecisionMaking-v0'
-plot_ = plot_pdm
-condition_average = condition_average_pdm
+# task = 'PerceptualDecisionMaking-v0'
+# plot_ = plot_pdm
+# condition_average = condition_average_pdm
 
-# task = 'DelayMatchSample-v0'
-# plot_ = plot_dms
-# condition_average = condition_average_dms
+task = 'DelayMatchSample-v0'
+plot_ = plot_dms
+condition_average = condition_average_dms
 
 print(task)
 
@@ -300,72 +300,47 @@ for run_batch_num in range(1,6):
         # print(1/np.sum(np.square(eigval_norm)))
         eigval_norm_list.append(1/np.sum(np.square(eigval_norm)))
     plt.plot(np.arange(trial_length), eigval_norm_list)
+    plt.ylabel('ED')
+    plt.xlabel('Time')
     
-
     # pca_list = []
-    activity = np.concatenate(list(activity_dict_1[i] for i in range(num_trial)), axis=0)
-    pca1 = PCA(n_components=2)
-    pca1.fit(activity)
-    print(pca1.explained_variance_ratio_)
-    # print(activity.shape)
-    # print(np.cov(activity.T))
-    # print(np.cov(activity.T).shape)
-    eigval, eigvec = np.linalg.eig(np.cov(activity.T))
-    # print(eigval)
-    # print(np.array(eigval).shape)
-    eigval_norm = np.real(eigval)/np.sum(np.real(eigval))
-    # print('ED:')
-    # print(1/np.sum(np.square(eigval_norm)))
-    # eigval = pca1.explained_variance_
-    # print(eigval)
+    dedim_method = 'SVD'
 
+    activity = np.concatenate(list(activity_dict_1[i] for i in range(num_trial)), axis=0)
+    pca1 = PCA(n_components=2) if dedim_method == 'PCA' else TruncatedSVD(2)
+    pca1.fit(activity)
+    # print(pca1.explained_variance_ratio_)
+    
     activity = np.concatenate(list(activity_dict_2[i] for i in range(num_trial)), axis=0)
-    pca2 = PCA(n_components=2)
+    pca2 = PCA(n_components=2) if dedim_method == 'PCA' else TruncatedSVD(2)
     pca2.fit(activity)
-    print(pca2.explained_variance_ratio_)
-    eigval, eigvec = np.linalg.eig(np.cov(activity.T))
-    # eigval_norm = np.real(eigval)/np.sum(np.real(eigval))
-    # print('ED:')
-    # print(1/np.sum(np.square(eigval_norm)))
+    # print(pca2.explained_variance_ratio_)
 
     activity = np.concatenate(list(activity_dict_3[i] for i in range(num_trial)), axis=0)
-    pca3 = PCA(n_components=2)
+    pca3 = PCA(n_components=2) if dedim_method == 'PCA' else TruncatedSVD(2)
     pca3.fit(activity)
-    print(pca3.explained_variance_ratio_)
-    eigval, eigvec = np.linalg.eig(np.cov(activity.T))
-    # eigval_norm = np.real(eigval)/np.sum(np.real(eigval))
-    # print('ED:')
-    # print(1/np.sum(np.square(eigval_norm)))
+    # print(pca3.explained_variance_ratio_)
 
     activity = np.concatenate(list(activity_dict_4[i] for i in range(num_trial)), axis=0)
-    pca4 = PCA(n_components=2)
+    pca4 = PCA(n_components=2) if dedim_method == 'PCA' else TruncatedSVD(2)
     pca4.fit(activity)
-    print(pca4.explained_variance_ratio_)
-    eigval, eigvec = np.linalg.eig(np.cov(activity.T))
-    # eigval_norm = np.real(eigval)/np.sum(np.real(eigval))
-    # print('ED:')
-    # print(1/np.sum(np.square(eigval_norm)))
+    # print(pca4.explained_variance_ratio_)
 
-    pca4_1 = PCA(n_components=3)
+    pca4_1 = PCA(n_components=3) if dedim_method == 'PCA' else TruncatedSVD(3)
     pca4_1.fit(activity)
-    print(pca4_1.explained_variance_ratio_)
+    # print(pca4_1.explained_variance_ratio_)
 
     if file_name_0 == 'DMS':
         activity = np.concatenate(list(activity_dict_5[i] for i in range(num_trial)), axis=0)
-        pca5 = PCA(n_components=2)
+        pca5 = PCA(n_components=2) if dedim_method == 'PCA' else TruncatedSVD(2)
         pca5.fit(activity)
-        print(pca5.explained_variance_ratio_)
-        eigval, eigvec = np.linalg.eig(np.cov(activity.T))
-        # eigval_norm = np.real(eigval)/np.sum(np.real(eigval))
-        # print('ED:')
-        # print(1/np.sum(np.square(eigval_norm)))
+        # print(pca5.explained_variance_ratio_)
 
     # weight_input = list(net.parameters())[1].detach().numpy()
     # bias_input = list(net.parameters())[2].detach().numpy()
     # weight_hidden = list(net.parameters())[3].detach().numpy()
     # bias_hidden = list(net.parameters())[4].detach().numpy()
 
-    # plt.show()
     recurrence = net.rnn.recurrence
 
     # inputs_0 = inputs_list[0].detach().numpy()
@@ -373,7 +348,7 @@ for run_batch_num in range(1,6):
 
     # speed_norm_list = []
     order = 1
-    gap = 4
+    gap = 4 ## 画图用参数，加colorbar之后保证子图大小都差不多
     seg_list = [marker_list[1]-1,marker_list[2]-1,marker_list[3]-1, \
         marker_list[4]-1,int((marker_list[4]+trial_length)/2)] if file_name_0 == 'DMS'  \
             else [marker_list[1]-1,marker_list[2]-1, \
@@ -386,7 +361,7 @@ for run_batch_num in range(1,6):
     #     up_lim = 15
     #     seq = 0.25
     # else:
-    up_lim = 40
+    up_lim = 30
     seq = 0.5
     down_lim = -up_lim
     
@@ -406,8 +381,6 @@ for run_batch_num in range(1,6):
     # pca = pca2
 
     weight_output = list(net.parameters())[5].detach().numpy() 
-
-    svd = TruncatedSVD(2)
 
     for input_order in range(len(inputs_list)):
         inputs = inputs_list[input_order].detach().numpy()
@@ -441,15 +414,10 @@ for run_batch_num in range(1,6):
             
             if file_name_0 == 'DMS':
                 
-                activity_projected_1_1 = svd.fit_transform(activity_list[0][:,time_len,:])
-                activity_projected_1_2 = svd.fit_transform(activity_list[1][:,time_len,:])
-                activity_projected_2_1 = svd.fit_transform(activity_list[2][:,time_len,:])
-                activity_projected_2_2 = svd.fit_transform(activity_list[3][:,time_len,:])
-
-                # activity_projected_1_1 = pca.transform(activity_list[0][:,time_len,:])
-                # activity_projected_1_2 = pca.transform(activity_list[1][:,time_len,:])
-                # activity_projected_2_1 = pca.transform(activity_list[2][:,time_len,:])
-                # activity_projected_2_2 = pca.transform(activity_list[3][:,time_len,:]) # trial_num * trial_len * phase_num
+                activity_projected_1_1 = pca.transform(activity_list[0][:,time_len,:])
+                activity_projected_1_2 = pca.transform(activity_list[1][:,time_len,:])
+                activity_projected_2_1 = pca.transform(activity_list[2][:,time_len,:])
+                activity_projected_2_2 = pca.transform(activity_list[3][:,time_len,:]) # trial_num * trial_len * phase_num
 
                 # if seg_order == len(seg_list) - 1:
                 #     output_1 = np.dot(weight_output, activity_list[0][:,time_len,:].T)
@@ -485,11 +453,12 @@ for run_batch_num in range(1,6):
                 # ax.scatter(fixedpoints_projected[:, 0], fixedpoints_projected[:, 1], color='purple')
 
             else:
-                # activity_projected_1 = pca.transform(activity_list[0][:,time_len,:])
-                # activity_projected_2 = pca.transform(activity_list[1][:,time_len,:]) # trial_num * trial_len * phase_num
+                activity_projected_1 = pca.transform(activity_list[0][:,time_len,:])
+                activity_projected_2 = pca.transform(activity_list[1][:,time_len,:]) # trial_num * trial_len * phase_num
                 
-                activity_projected_1 = svd.fit_transform(activity_list[0][:,time_len,:])
-                activity_projected_2 = svd.fit_transform(activity_list[1][:,time_len,:])
+                ax.scatter(activity_projected_1[:,0],activity_projected_1[:,1],color='red',s=10,label='gt=0')
+                ax.scatter(activity_projected_2[:,0],activity_projected_2[:,1],color='blue',s=10,label='gt=1')
+    
                 # if seg_order == len(seg_list) - 1:
                 #     output_1 = np.dot(weight_output, activity_list[0][:,time_len,:].T)
                 #     output_2 = np.dot(weight_output, activity_list[1][:,time_len,:].T)
@@ -503,8 +472,6 @@ for run_batch_num in range(1,6):
                 #     print('output_2: '+str(output_2))
 
             fixedpoints_projected = pca.transform(fixedpoints)
-            fixedpoints_projected = svd.fit_transform(fixedpoints)
-
             ax.scatter(fixedpoints_projected[:, 0], fixedpoints_projected[:, 1], color='purple')
 
                 # i_fp = np.argsort(fixedpoints[:, 0])[int(fixedpoints.shape[0]/2)] #从小到大排序返回对应的index序列
@@ -523,31 +490,24 @@ for run_batch_num in range(1,6):
                 # ax.scatter(activity_projected_1[:,0],activity_projected_1[:,1],color='red',s=10,label='gt=0')
                 # ax.scatter(activity_projected_2[:,0],activity_projected_2[:,1],color='blue',s=10,label='gt=1')
 
-            if seg_order == len(seg_list) - 1:
-                    output_projected = pca.transform(weight_output)
-                    output_projected = svd.fit_transform(weight_output)
-                    # print(weight_output)
-                    print(output_projected)
-                    ax.arrow(0,0,output_projected[0,0],output_projected[0,1],color='red',width=0.2)
-                    ax.arrow(0,0,output_projected[1,0],output_projected[1,1],color='green',width=0.2)
-                    ax.arrow(0,0,output_projected[2,0],output_projected[2,1],color='blue',width=0.2)
+            # if seg_order == len(seg_list) - 1:
+            output_projected = pca.transform(weight_output)
+            # ax.arrow(0,0,output_projected[0,0]*100,output_projected[0,1]*100,color='black',width=0.3)
+            ax.arrow(0,0,output_projected[1,0]*100,output_projected[1,1]*100,color='red',width=0.3)
+            ax.arrow(0,0,output_projected[2,0]*100,output_projected[2,1]*100,color='blue',width=0.3)
 
             for grid_num_x in np.arange(down_lim,up_lim,seq):
                 for grid_num_y in np.arange(down_lim,up_lim,seq):
                     h_0 = np.array([grid_num_x, grid_num_y])
-                    h = pca.inverse_transform(h_0)
+                    h = pca.inverse_transform(h_0) if dedim_method == 'PCA' else np.squeeze(pca.inverse_transform(np.expand_dims(h_0,axis=0)))
             
-                    # print(h_0)
-                    # print(np.squeeze(pca.transform(np.expand_dims(h,axis=0))))
-                
                     # pre_act = np.dot(weight_hidden, h) + np.dot(weight_input, inputs[time_len,0,:]) + bias_hidden #+ bias_input
                     # speed = (- h + torch.relu(torch.tensor(pre_act)).numpy()) * dt/tau
                     # speed = np.squeeze(pca.transform(np.expand_dims(speed,axis=0)))
 
                     speed_ = recurrence(torch.tensor(inputs[time_len,0,:],dtype=torch.float32),torch.tensor(h,dtype=torch.float32)).detach().numpy() - h
-                    # speed = np.squeeze(pca.transform(np.expand_dims(speed_,axis=0)))
-                    speed = np.squeeze(svd.fit_transform(np.expand_dims(speed_,axis=0)))
-                    print(speed.shape)
+                    speed = np.squeeze(pca.transform(np.expand_dims(speed_,axis=0)))
+                   
                     # if grid_num_x % 10 == 0 and grid_num_y % 10 == 0:
                     #     print('speed_high')
                     #     print(np.linalg.norm(speed_))
@@ -571,12 +531,9 @@ for run_batch_num in range(1,6):
 
                     speed_x[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = speed[0]
                     speed_y[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = speed[1]
-                    # speed_norm[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = np.log2(np.linalg.norm(speed_)) ## 高维速度
-                    speed_norm[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = np.log(np.linalg.norm(speed)) ## 低维速度
+                    speed_norm[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = np.log2(np.linalg.norm(speed_)) ## 高维速度
+                    # speed_norm[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = np.log(np.linalg.norm(speed)) ## 低维速度
                     
-                    if speed[0] == 0 and speed[1] == 0:
-                        ax.scatter(grid_num_x,grid_num_y,color='black',marker='o')
-            
             speed_x = speed_x.T
             speed_y = speed_y.T
             speed_norm = speed_norm.T
