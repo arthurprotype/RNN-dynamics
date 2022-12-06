@@ -25,9 +25,11 @@ class DelayMatchSample(ngym.TrialEnv):
                  'supervised']
     }
 
-    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0,
+    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, cohs=None,
                  dim_ring=2):
         super().__init__(dt=dt)
+        if cohs is None: # coherence
+            self.cohs = np.array([0, 6.4, 12.8, 25.6, 51.2]) # difficulty
         self.choices = [0, 1]
         # self.choices = [1, 2]
         self.sigma = sigma / np.sqrt(self.dt)  # Input noise
@@ -58,7 +60,7 @@ class DelayMatchSample(ngym.TrialEnv):
         name = {'fixation': 0, 'match': 1, 'non-match': 2}
         self.action_space = spaces.Discrete(3, name=name)
 
-    def _new_trial(self, **kwargs):
+    def _new_trial(self, train_bool=True, **kwargs):
         # Trial
         trial = {
             'ground_truth': self.rng.choice(self.choices),
@@ -77,8 +79,9 @@ class DelayMatchSample(ngym.TrialEnv):
 
         # stim_sample = [np.sin(stim_theta), np.cos(stim_theta)]
         # stim_test = [np.sin(test_theta), np.cos(test_theta)]
-        stim_sample = np.cos(self.theta - stim_theta) * 0.5 + 0.5
-        stim_test = np.cos(self.theta - test_theta) * 0.5 + 0.5
+        coh = self.rng.choice(self.cohs)
+        stim_sample = np.cos(self.theta - stim_theta) * (coh/200) * 2 + 0.5
+        stim_test = np.cos(self.theta - test_theta) * (coh/200) * 2 + 0.5
         
         trial['stim_ch1'] = stim_sample[0]
         trial['stim_ch2'] = stim_sample[1]
@@ -89,7 +92,9 @@ class DelayMatchSample(ngym.TrialEnv):
         self.set_ob(0, 'decision', where='fixation')
         self.add_ob(stim_sample, 'sample', where='stimulus')
         self.add_ob(stim_test, 'test', where='stimulus')
-        self.add_randn(0, self.sigma, ['sample', 'test'], where='stimulus')
+
+        if train_bool == True:
+            self.add_randn(0, self.sigma, ['sample', 'test'], where='stimulus')
 
         self.set_groundtruth(ground_truth, 'decision')
 

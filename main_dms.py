@@ -31,13 +31,13 @@ import pickle as pl
 
 # Environment
 
-# task = 'PerceptualDecisionMaking-v0'
-# plot_ = plot_pdm
-# condition_average = condition_average_pdm
+task = 'PerceptualDecisionMaking-v0'
+plot_ = plot_pdm
+condition_average = condition_average_pdm
 
-task = 'DelayMatchSample-v0'
-plot_ = plot_dms
-condition_average = condition_average_dms
+# task = 'DelayMatchSample-v0'
+# plot_ = plot_dms
+# condition_average = condition_average_dms
 
 print(task)
 
@@ -84,7 +84,7 @@ position = 0.5
 tau = 100
 dt = 100
 file_name_5 = 'tau='+str(tau)+' dt='+str(dt)+' ' 
-epochs = 10000 if file_name_0 == 'DMS' else 5000
+epochs = 5000 if file_name_0 == 'DMS' else 5000
 # epochs = 10000 if position <= 1.1 else 20000
 file_name_4 = 'hidden_kaiming '
 if 'kaiming' in file_name_4:
@@ -92,11 +92,13 @@ if 'kaiming' in file_name_4:
 kai_bool = True if 'kaiming' in file_name_4 else False
 file_name_3 = 'pos='+str(position)+' delay='+str(int(timing[i] / env.dt))+' '
 
+# dedim_method = 'PCA'
+
 mkfile_time = datetime.datetime.strftime(datetime.datetime.now(), '%m-%d-%H:%M') #这里是引用时间
 mkfile_time = file_name_0 + file_name_1 + file_name_2 + file_name_3 + file_name_4 + file_name_5 + mkfile_time #注意这里在下面是用作文件夹名字的，里面也用了列表使每个文件夹的名字不一样
 figure_save_path = mkfile_time #给文件夹赋予名字
 
-for run_batch_num in range(1,6):
+for run_batch_num in range(1,11):
     print("batch_order: "+str(run_batch_num))
     # lr = 0.0001 * run_batch_num
     # print('lr: '+str(lr))
@@ -113,7 +115,6 @@ for run_batch_num in range(1,6):
 
     for i in range(epochs):
         inputs, labels = dataset()
-        
         inputs = torch.from_numpy(inputs).type(torch.float) #(100,16,9)
         labels = torch.from_numpy(labels.flatten()).type(torch.long) #(100,16) -> (1600)
         
@@ -121,10 +122,6 @@ for run_batch_num in range(1,6):
         optimizer.zero_grad()   # zero the gradient buffers
         output_raw, rnn_activity, speed = net(inputs) 
         output = output_raw.view(-1, output_size) #(100,16,3) -> (1600,3) 
-        # output_ = output.detach().numpy()
-        # print(output_.shape)
-        # print(labels.shape)
-        
         loss = criterion(output, labels)
         loss.backward()
         nn.utils.clip_grad_norm_(net.parameters(), max_norm=1, norm_type=2)
@@ -151,8 +148,9 @@ for run_batch_num in range(1,6):
         hidden_weight = list(net.parameters())[2].detach().numpy()
     hidden_eigval, hidden_eigvec = np.linalg.eig(hidden_weight)
     
-    fig0 = plt.figure(figsize=(12,5))
-    plt.subplot(1,2,1)
+    num_pic = 2
+    fig0 = plt.figure(figsize=(num_pic*6,5))
+    plt.subplot(1,num_pic,1)
     plt.scatter(np.real(hidden_eigval_0), np.imag(hidden_eigval_0),color='red',s=10)
     plt.scatter(np.real(hidden_eigval), np.imag(hidden_eigval),s=10)
     plt.plot([position, position], [-0.7, 0.7], '--') # y轴  
@@ -170,8 +168,9 @@ for run_batch_num in range(1,6):
     trial_infos = {}
     inputs_list = []
     input_type_list = []
+
     for i in range(num_trial):
-        env.new_trial()
+        env.new_trial(train_bool=False)
         ob, gt = env.ob, env.gt
         inputs = torch.from_numpy(ob[:, np.newaxis, :]).type(torch.float) # 维度 ob(22,1,3) gt(22,) input&output(100,16,3) hidden(100,16,64)
         output, rnn_activity, speed = net(inputs)
@@ -259,7 +258,7 @@ for run_batch_num in range(1,6):
     activity_mean_list = np.mean([val for val in activity_dict.values()],axis=2)
     activity_mean_list_ = np.mean(activity_mean_list,axis=0)
 
-    plt.subplot(1,2,2)
+    plt.subplot(1,num_pic,2)
     plot_firing_rate(activity_mean_list, activity_mean_list_, 'ground_truth', 'stim_theta', trial_infos, marker_list, task)
     
     if acc_mean < 0.7:
@@ -289,52 +288,50 @@ for run_batch_num in range(1,6):
     
     activity_mean_list, activity_var_list, activity_list = condition_average(trial_length, num_trial, trial_infos, activity_dict, hidden_size)
 
-    fig = plt.figure()
-    eigval_norm_list = []
-    for i in range(trial_length):
-        activity = np.concatenate(list(activity_dict[j][i] for j in range(num_trial)), axis=0).reshape(-1,256)
-        eigval, eigvec = np.linalg.eig(np.cov(activity.T))
-        eigval_norm = np.real(eigval)/np.sum(np.real(eigval))
-        # print(np.sum(np.square(eigval_norm)))
-        # print('ED:')
-        # print(1/np.sum(np.square(eigval_norm)))
-        eigval_norm_list.append(1/np.sum(np.square(eigval_norm)))
-    plt.plot(np.arange(trial_length), eigval_norm_list)
-    plt.ylabel('ED')
-    plt.xlabel('Time')
+    # plt.subplot(1,3,3)
+    # eigval_norm_list = []
+    # for i in range(trial_length):
+    #     activity = np.concatenate(list(activity_dict[j][i] for j in range(num_trial)), axis=0).reshape(-1,256)
+    #     eigval, eigvec = np.linalg.eig(np.cov(activity.T))
+    #     eigval_norm = np.real(eigval)/np.sum(np.real(eigval))
+    #     # print(np.sum(np.square(eigval_norm)))
+    #     # print('ED:')
+    #     # print(1/np.sum(np.square(eigval_norm)))
+    #     eigval_norm_list.append(1/np.sum(np.square(eigval_norm)))
+    # plt.plot(np.arange(trial_length), eigval_norm_list)
+    # plt.ylabel('ED')
+    # plt.xlabel('Time')
     
     # pca_list = []
-    dedim_method = 'SVD'
 
-    activity = np.concatenate(list(activity_dict_1[i] for i in range(num_trial)), axis=0)
-    pca1 = PCA(n_components=2) if dedim_method == 'PCA' else TruncatedSVD(2)
-    pca1.fit(activity)
-    # print(pca1.explained_variance_ratio_)
-    
-    activity = np.concatenate(list(activity_dict_2[i] for i in range(num_trial)), axis=0)
-    pca2 = PCA(n_components=2) if dedim_method == 'PCA' else TruncatedSVD(2)
-    pca2.fit(activity)
-    # print(pca2.explained_variance_ratio_)
+    def zeroMean(dataMat):      
+        meanVal=np.mean(dataMat,axis=0)     #按列求均值，即求各个特征的均值
+        newData=dataMat-meanVal
+        return newData,meanVal
+ 
+    def fit(dataMat,n):
+        newData,meanVal=zeroMean(dataMat)
+        covMat=np.cov(newData,rowvar=0)    #求协方差矩阵,return ndarray；若rowvar非0，一列代表一个样本，为0，一行代表一个样本
+        
+        eigVals,eigVects=np.linalg.eig(np.mat(covMat))#求特征值和特征向量,特征向量是按列放的，即一列代表一个特征向量
+        eigValIndice=np.argsort(eigVals)            #对特征值从小到大排序
+        print(np.sort(eigVals)[-1:-(n+1):-1])
+        n_eigValIndice=eigValIndice[-1:-(n+1):-1]   #最大的n个特征值的下标
+        n_eigVect=eigVects[:,n_eigValIndice]        #最大的n个特征值对应的特征向量
+        lowDDataMat=newData*n_eigVect               #低维特征空间的数据
+        # reconMat=(lowDDataMat*n_eigVect.T)+meanVal  #重构数据
+        return np.real(n_eigVect),meanVal
 
-    activity = np.concatenate(list(activity_dict_3[i] for i in range(num_trial)), axis=0)
-    pca3 = PCA(n_components=2) if dedim_method == 'PCA' else TruncatedSVD(2)
-    pca3.fit(activity)
-    # print(pca3.explained_variance_ratio_)
+    def pca_(activity_dict,dedim_method):
+        activity = np.concatenate(list(activity_dict[i] for i in range(num_trial)), axis=0)
+        if dedim_method == 'PCA':
+            pca = fit(activity,2)
+        else:
+            pca = TruncatedSVD(n_components=2)
+            pca.fit(activity)
+            print(pca.singular_values_)
 
-    activity = np.concatenate(list(activity_dict_4[i] for i in range(num_trial)), axis=0)
-    pca4 = PCA(n_components=2) if dedim_method == 'PCA' else TruncatedSVD(2)
-    pca4.fit(activity)
-    # print(pca4.explained_variance_ratio_)
-
-    pca4_1 = PCA(n_components=3) if dedim_method == 'PCA' else TruncatedSVD(3)
-    pca4_1.fit(activity)
-    # print(pca4_1.explained_variance_ratio_)
-
-    if file_name_0 == 'DMS':
-        activity = np.concatenate(list(activity_dict_5[i] for i in range(num_trial)), axis=0)
-        pca5 = PCA(n_components=2) if dedim_method == 'PCA' else TruncatedSVD(2)
-        pca5.fit(activity)
-        # print(pca5.explained_variance_ratio_)
+        return pca
 
     # weight_input = list(net.parameters())[1].detach().numpy()
     # bias_input = list(net.parameters())[2].detach().numpy()
@@ -342,231 +339,173 @@ for run_batch_num in range(1,6):
     # bias_hidden = list(net.parameters())[4].detach().numpy()
 
     recurrence = net.rnn.recurrence
+    weight_output = list(net.parameters())[5].detach().numpy() 
 
     # inputs_0 = inputs_list[0].detach().numpy()
     # inputs_1 = inputs_list[1].detach().numpy()
 
-    # speed_norm_list = []
-    order = 1
-    gap = 4 ## 画图用参数，加colorbar之后保证子图大小都差不多
-    seg_list = [marker_list[1]-1,marker_list[2]-1,marker_list[3]-1, \
-        marker_list[4]-1,int((marker_list[4]+trial_length)/2)] if file_name_0 == 'DMS'  \
-            else [marker_list[1]-1,marker_list[2]-1, \
-                marker_list[3]-1,int((marker_list[3]+trial_length)/2)]#,28,29,32,38] if file_name_0 == 'DMS' else [0,2,11,21,26] 
-    fig4 = plt.figure(figsize=(6*(len(seg_list))+1,6*(len(inputs_list))))
-    grid = plt.GridSpec(len(inputs_list), len(seg_list)*gap+1)
-    # axes = fig4.subplots(2,(len(seg_list)))
+    def plot_pic(dedim_method):
 
-    # if file_name_0 == 'DMS':
-    #     up_lim = 15
-    #     seq = 0.25
-    # else:
-    up_lim = 30
-    seq = 0.5
-    down_lim = -up_lim
-    
-    speed_norm = np.arange(int((up_lim-down_lim)*(up_lim-down_lim)/(seq*seq))).reshape(int((up_lim-down_lim)/seq),int((up_lim-down_lim)/seq))
-    speed_x = np.arange(int(((up_lim-down_lim)*(up_lim-down_lim))/(seq*seq))).reshape(int((up_lim-down_lim)/seq),int((up_lim-down_lim)/seq))
-    speed_y = np.arange(int(((up_lim-down_lim)*(up_lim-down_lim))/(seq*seq))).reshape(int((up_lim-down_lim)/seq),int((up_lim-down_lim)/seq))
-    x = np.arange(down_lim,up_lim,seq) 
-    y = np.arange(down_lim,up_lim,seq) 
-    X, Y = np.meshgrid(x, y)
+        pca1 = pca_(activity_dict_1,dedim_method)
+        pca2 = pca_(activity_dict_2,dedim_method)
+        pca3 = pca_(activity_dict_3,dedim_method)
+        pca4 = pca_(activity_dict_4,dedim_method)
+        
+        if file_name_0 == 'DMS':
+            pca5 = pca_(activity_dict_5,dedim_method)
 
-    # for inputs_order in range(len(inputs_list)):
-    #     inputs = inputs_list[inputs_order].detach().numpy()
-    #     # print('stim_theta: '+str(inputs[seg_list[1],0,:]))
-    #     # print('test_theta: '+str(inputs[seg_list[4],0,:]))
+        ## initialization
+        gap = 4 ## 画图用参数，加colorbar之后保证子图大小都差不多
+        seg_list = [marker_list[1]-1,marker_list[2]-1,marker_list[3]-1, \
+            marker_list[4]-1,int((marker_list[4]+trial_length)/2)] if file_name_0 == 'DMS'  \
+                else [marker_list[1]-1,marker_list[2]-1, \
+                    marker_list[3]-1,int((marker_list[3]+trial_length)/2)]#,28,29,32,38] if file_name_0 == 'DMS' else [0,2,11,21,26] 
+        fig = plt.figure(figsize=(6*(len(seg_list))+1,6*2*(len(inputs_list))))
+        grid = plt.GridSpec(2*len(inputs_list), len(seg_list)*gap+1)
 
-    # seg_list = [30,31,32,33,34]
-    # pca = pca2
+        up_lim = 40
+        seq = 0.5
+        down_lim = -up_lim
+        
+        speed_norm = np.arange(int((up_lim-down_lim)*(up_lim-down_lim)/(seq*seq))).reshape(int((up_lim-down_lim)/seq),int((up_lim-down_lim)/seq))
+        speed_x = np.arange(int(((up_lim-down_lim)*(up_lim-down_lim))/(seq*seq))).reshape(int((up_lim-down_lim)/seq),int((up_lim-down_lim)/seq))
+        speed_y = np.arange(int(((up_lim-down_lim)*(up_lim-down_lim))/(seq*seq))).reshape(int((up_lim-down_lim)/seq),int((up_lim-down_lim)/seq))
+        x = np.arange(down_lim,up_lim,seq) 
+        y = np.arange(down_lim,up_lim,seq) 
+        X, Y = np.meshgrid(x, y)
 
-    weight_output = list(net.parameters())[5].detach().numpy() 
+        # for inputs_order in range(len(inputs_list)):
+        #     inputs = inputs_list[inputs_order].detach().numpy()
+        #     # print('stim_theta: '+str(inputs[seg_list[1],0,:]))
+        #     # print('test_theta: '+str(inputs[seg_list[4],0,:]))
 
-    for input_order in range(len(inputs_list)):
-        inputs = inputs_list[input_order].detach().numpy()
-        for seg_order in range(len(seg_list)):
-            if file_name_0 == 'DMS':
-                # pca = pca1 if seg_order == 0 else pca2 if seg_order == 1 else pca3 if seg_order == 2 \
-                #       else pca4 if seg_order == 3 else pca5
+        for input_order in range(2*len(inputs_list)):
+            inputs = inputs_list[input_order%len(inputs_list)].detach().numpy()
+            print('done') 
+            for seg_order in range(len(seg_list)):    
+                if file_name_0 == 'DMS':
+                    pca = pca1 if seg_order == 0 else pca2 if seg_order == 1 else pca3 if seg_order == 2 \
+                        else pca4 if seg_order == 3 else pca5
+                    # pca = pca4 if seg_order < 3 else pca5
+                    title = 'Fix' if seg_order == 0 else 'Stim' if seg_order == 1 else 'Memory' if seg_order == 2 \
+                        else 'Probe' if seg_order == 3 else 'Decision'
+                else:
+                    pca = pca1 if seg_order == 0 else pca2 if seg_order == 1 else pca3 if seg_order == 2 else pca4
+                    title = 'Fix' if seg_order == 0 else 'Decision' if seg_order == 3 else 'Stim' if seg_order == 1 else 'Memory'
 
-                pca = pca4 if seg_order < 3 else pca5
+                fixedpoints = fixed_points_list[seg_order]
+                time_len = seg_list[seg_order]
 
-                title = 'Fix' if seg_order == 0 else 'Stim' if seg_order == 1 else 'Memory' if seg_order == 2 \
-                    else 'Probe' if seg_order == 3 else 'Decision'
-            else:
-                pca = pca1 if seg_order == 0 else pca2 if seg_order == 1 else pca3 if seg_order == 2 else pca4
-                title = 'Fix' if seg_order == 0 else 'Decision' if seg_order == 3 else 'Stim' if seg_order == 1 else 'Memory'
+                if seg_order < len(seg_list)-1:
+                    ax = plt.subplot(grid[input_order,seg_order*gap:seg_order*gap+gap])
+                else: 
+                    ax = plt.subplot(grid[input_order,seg_order*gap:])
 
-            # pca = pca1
-            fixedpoints = fixed_points_list[seg_order]
+                if input_order < len(inputs_list)-1:
+                    ax.set_xticks([])
+                if seg_order > 0:
+                    ax.set_yticks([])
 
-            if seg_order < len(seg_list)-1:
-                ax = plt.subplot(grid[input_order,seg_order*gap:seg_order*gap+gap])
-            else: 
-                ax = plt.subplot(grid[input_order,seg_order*gap:])
+                if file_name_0 == 'DMS':
+                    if dedim_method == 'SVD':
+                        activity_projected_1_1 = pca.transform(activity_list[0][:,time_len,:])
+                        activity_projected_1_2 = pca.transform(activity_list[1][:,time_len,:])
+                        activity_projected_2_1 = pca.transform(activity_list[2][:,time_len,:])
+                        activity_projected_2_2 = pca.transform(activity_list[3][:,time_len,:]) # trial_num * trial_len * neuron_num
+                    else:
+                        activity_projected_1_1 = np.array(activity_list[0][:,time_len,:] * pca[0])
+                        activity_projected_1_2 = np.array(activity_list[1][:,time_len,:] * pca[0])
+                        activity_projected_2_1 = np.array(activity_list[2][:,time_len,:] * pca[0])
+                        activity_projected_2_2 = np.array(activity_list[3][:,time_len,:] * pca[0])
 
-            if input_order < len(inputs_list)-1:
-                ax.set_xticks([])
-            if seg_order > 0:
-                ax.set_yticks([])
+                    ax.scatter(activity_projected_1_1[:,0],activity_projected_1_1[:,1],color='red',s=10,label='gt=1 stim=0')
+                    ax.scatter(activity_projected_1_2[:,0],activity_projected_1_2[:,1],color='blue',s=10,label='gt=1 stim=180')
+                    ax.scatter(activity_projected_2_1[:,0],activity_projected_2_1[:,1],color='yellow',s=10,label='gt=0 stim=0')
+                    ax.scatter(activity_projected_2_2[:,0],activity_projected_2_2[:,1],color='green',s=10,label='gt=0 stim=180')
 
-            time_len = seg_list[seg_order]
-            
-            if file_name_0 == 'DMS':
+                else:
+                    if dedim_method == 'SVD':
+                        activity_projected_1 = pca.transform(activity_list[0][:,time_len,:])
+                        activity_projected_2 = pca.transform(activity_list[1][:,time_len,:]) # trial_num * trial_len * neuron_num
+                    else:
+                        activity_projected_1 = activity_list[0][:,time_len,:] * pca[0]
+                        activity_projected_2 = activity_list[1][:,time_len,:] * pca[0]
                 
-                activity_projected_1_1 = pca.transform(activity_list[0][:,time_len,:])
-                activity_projected_1_2 = pca.transform(activity_list[1][:,time_len,:])
-                activity_projected_2_1 = pca.transform(activity_list[2][:,time_len,:])
-                activity_projected_2_2 = pca.transform(activity_list[3][:,time_len,:]) # trial_num * trial_len * phase_num
+                    ax.scatter(np.array(activity_projected_1[:,0]),np.array(activity_projected_1[:,1]),color='red',s=10,label='gt=0')
+                    ax.scatter(np.array(activity_projected_2[:,0]),np.array(activity_projected_2[:,1]),color='blue',s=10,label='gt=1')
+
+                fixedpoints_projected = pca.transform(fixedpoints) if dedim_method == 'SVD' else fixedpoints * pca[0]
+                ax.scatter(np.array(fixedpoints_projected[:, 0]), np.array(fixedpoints_projected[:, 1]), color='purple')
+
+                    # i_fp = np.argsort(fixedpoints[:, 0])[int(fixedpoints.shape[0]/2)] #从小到大排序返回对应的index序列
+                    # input = torch.tensor([1, 0.5, 0.5], dtype = torch.float32)
+                    # speed_ = recurrence(input,torch.tensor(fixedpoints[i_fp],dtype=torch.float32)).detach().numpy() - fixedpoints[i_fp]
+                    # speed = np.squeeze(pca.transform(np.expand_dims(speed_,axis=0)))
+            
+                    # speed_projected_1 = pca.transform(speed_list[0][:,time_len,:])
+                    # speed_projected_2 = pca.transform(speed_list[1][:,time_len,:]) # trial_num * trial_len * phase_num
 
                 # if seg_order == len(seg_list) - 1:
-                #     output_1 = np.dot(weight_output, activity_list[0][:,time_len,:].T)
-                #     output_2 = np.dot(weight_output, activity_list[1][:,time_len,:].T)
-                #     output_3 = np.dot(weight_output, activity_list[2][:,time_len,:].T)
-                #     output_4 = np.dot(weight_output, activity_list[3][:,time_len,:].T)
                 
-                #     for i in range(output_1.shape[1]):
-                #         print('output_1')
-                #         print(np.argmax(output_1[:,i]))
-
-                #     for i in range(output_2.shape[1]):
-                #         print('output_2')
-                #         print(np.argmax(output_2[:,i]))
-
-                #     for i in range(output_3.shape[1]):
-                #         print('output_3')
-                #         print(np.argmax(output_3[:,i]))
-
-                #     for i in range(output_4.shape[1]):
-                #         print('output_4')
-                #         print(np.argmax(output_4[:,i]))
-                    # print('output_1: '+str(output_1))
-                    # print('output_2: '+str(output_2))
-
-                ax.scatter(activity_projected_1_1[:,0],activity_projected_1_1[:,1],color='red',s=10,label='gt=1 stim=0')
-                ax.scatter(activity_projected_1_2[:,0],activity_projected_1_2[:,1],color='blue',s=10,label='gt=1 stim=180')
-                ax.scatter(activity_projected_2_1[:,0],activity_projected_2_1[:,1],color='yellow',s=10,label='gt=0 stim=0')
-                ax.scatter(activity_projected_2_2[:,0],activity_projected_2_2[:,1],color='green',s=10,label='gt=0 stim=180')
-
-                # fixedpoints_projected = pca.transform(fixedpoints)
-                # fixedpoints_projected = svd.fit_transform(fixedpoints)
-                # ax.scatter(fixedpoints_projected[:, 0], fixedpoints_projected[:, 1], color='purple')
-
-            else:
-                activity_projected_1 = pca.transform(activity_list[0][:,time_len,:])
-                activity_projected_2 = pca.transform(activity_list[1][:,time_len,:]) # trial_num * trial_len * phase_num
+                output_projected = pca.transform(weight_output) if dedim_method == 'SVD' else np.array(weight_output * pca[0])
                 
-                ax.scatter(activity_projected_1[:,0],activity_projected_1[:,1],color='red',s=10,label='gt=0')
-                ax.scatter(activity_projected_2[:,0],activity_projected_2[:,1],color='blue',s=10,label='gt=1')
-    
-                # if seg_order == len(seg_list) - 1:
-                #     output_1 = np.dot(weight_output, activity_list[0][:,time_len,:].T)
-                #     output_2 = np.dot(weight_output, activity_list[1][:,time_len,:].T)
-                
-                #     for i in range(output_1.shape[1]):
-                #         print(np.argmax(output_1[:,i]))
+                # ax.arrow(0,0,output_projected[0,0]*100,output_projected[0,1]*100,color='black',width=0.3)
+                ax.arrow(0,0,output_projected[1,0]*100,output_projected[1,1]*100,color='red',width=0.3)
+                ax.arrow(0,0,output_projected[2,0]*100,output_projected[2,1]*100,color='blue',width=0.3)
 
-                #     for i in range(output_2.shape[1]):
-                #         print(np.argmax(output_2[:,i]))
-                #     print('output_1: '+str(output_1))
-                #     print('output_2: '+str(output_2))
+                for grid_num_x in np.arange(down_lim,up_lim,seq):
+                    for grid_num_y in np.arange(down_lim,up_lim,seq):
+                        h_0 = np.array([grid_num_x, grid_num_y])
+                        # h = pca.inverse_transform(h_0) if dedim_method == 'PCA' else np.squeeze(pca.inverse_transform(np.expand_dims(h_0,axis=0)))
+                        # h = h_0 * pca[0].T + pca[1]
+                        h = np.squeeze(pca.inverse_transform(np.expand_dims(h_0,axis=0))) if dedim_method == 'SVD' else h_0 * pca[0].T + pca[1]
 
-            fixedpoints_projected = pca.transform(fixedpoints)
-            ax.scatter(fixedpoints_projected[:, 0], fixedpoints_projected[:, 1], color='purple')
+                        # pre_act = np.dot(weight_hidden, h) + np.dot(weight_input, inputs[time_len,0,:]) + bias_hidden #+ bias_input
+                        # speed = (- h + torch.relu(torch.tensor(pre_act)).numpy()) * dt/tau
+                        # speed = np.squeeze(pca.transform(np.expand_dims(speed,axis=0)))
 
-                # i_fp = np.argsort(fixedpoints[:, 0])[int(fixedpoints.shape[0]/2)] #从小到大排序返回对应的index序列
-                # input = torch.tensor([1, 0.5, 0.5], dtype = torch.float32)
-                # speed_ = recurrence(input,torch.tensor(fixedpoints[i_fp],dtype=torch.float32)).detach().numpy() - fixedpoints[i_fp]
-                # print(speed_)
-                # speed = np.squeeze(pca.transform(np.expand_dims(speed_,axis=0)))
-                
-                # print(np.squeeze(pca1.transform(np.expand_dims(speed_,axis=0))))
-                # print(speed)
-                # print(np.squeeze(pca4.transform(np.expand_dims(speed_,axis=0))))
-                
-                # speed_projected_1 = pca.transform(speed_list[0][:,time_len,:])
-                # speed_projected_2 = pca.transform(speed_list[1][:,time_len,:]) # trial_num * trial_len * phase_num
+                        speed_ = recurrence(torch.tensor(inputs[time_len,0,:],dtype=torch.float32),torch.tensor(h,dtype=torch.float32)).detach().numpy() - h
+                        speed = np.squeeze(pca.transform(np.expand_dims(speed_,axis=0))) if dedim_method == 'SVD' else np.expand_dims(speed_,axis=0) * pca[0]
+                        # speed = np.expand_dims(speed_,axis=0) * pca[0]
 
-                # ax.scatter(activity_projected_1[:,0],activity_projected_1[:,1],color='red',s=10,label='gt=0')
-                # ax.scatter(activity_projected_2[:,0],activity_projected_2[:,1],color='blue',s=10,label='gt=1')
-
-            # if seg_order == len(seg_list) - 1:
-            output_projected = pca.transform(weight_output)
-            # ax.arrow(0,0,output_projected[0,0]*100,output_projected[0,1]*100,color='black',width=0.3)
-            ax.arrow(0,0,output_projected[1,0]*100,output_projected[1,1]*100,color='red',width=0.3)
-            ax.arrow(0,0,output_projected[2,0]*100,output_projected[2,1]*100,color='blue',width=0.3)
-
-            for grid_num_x in np.arange(down_lim,up_lim,seq):
-                for grid_num_y in np.arange(down_lim,up_lim,seq):
-                    h_0 = np.array([grid_num_x, grid_num_y])
-                    h = pca.inverse_transform(h_0) if dedim_method == 'PCA' else np.squeeze(pca.inverse_transform(np.expand_dims(h_0,axis=0)))
-            
-                    # pre_act = np.dot(weight_hidden, h) + np.dot(weight_input, inputs[time_len,0,:]) + bias_hidden #+ bias_input
-                    # speed = (- h + torch.relu(torch.tensor(pre_act)).numpy()) * dt/tau
-                    # speed = np.squeeze(pca.transform(np.expand_dims(speed,axis=0)))
-
-                    speed_ = recurrence(torch.tensor(inputs[time_len,0,:],dtype=torch.float32),torch.tensor(h,dtype=torch.float32)).detach().numpy() - h
-                    speed = np.squeeze(pca.transform(np.expand_dims(speed_,axis=0)))
-                   
-                    # if grid_num_x % 10 == 0 and grid_num_y % 10 == 0:
-                    #     print('speed_high')
-                    #     print(np.linalg.norm(speed_))
-                    #     print('speed_low')
-                    #     print(np.linalg.norm(speed))
-
-                    # if np.linalg.norm(speed) < 2:
-                    #     # print(speed_)
-                    #     print('speed_low')
-                    #     print(np.linalg.norm(speed_))
-                    #     print(np.linalg.norm(speed))
-
-                    # if np.linalg.norm(speed_) < 8:
-                    #     # print(speed_)
-                    #     print('speed_high')
-                    #     print(np.linalg.norm(speed_))
-                    #     print(np.linalg.norm(speed))
-
-                    #     print(np.squeeze(pca1.transform(np.expand_dims(speed_,axis=0))))
-                    #     print(np.squeeze(pca3.transform(np.expand_dims(speed_,axis=0))))
-
-                    speed_x[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = speed[0]
-                    speed_y[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = speed[1]
-                    speed_norm[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = np.log2(np.linalg.norm(speed_)) ## 高维速度
-                    # speed_norm[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = np.log(np.linalg.norm(speed)) ## 低维速度
+                        if dedim_method == 'PCA':
+                            speed_x[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = speed[:,0]
+                            speed_y[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = speed[:,1]
+                        else:
+                            speed_x[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = speed[0]
+                            speed_y[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = speed[1]
                     
-            speed_x = speed_x.T
-            speed_y = speed_y.T
-            speed_norm = speed_norm.T
+                        if input_order < len(inputs_list):
+                            speed_norm[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = np.log2(np.linalg.norm(speed_)) ## 高维速度
+                        else:
+                            speed_norm[int((grid_num_x-down_lim)/seq)][int((grid_num_y-down_lim)/seq)] = np.log2(np.linalg.norm(speed)) ## 低维速度
+                        
+                speed_x = speed_x.T
+                speed_y = speed_y.T
+                speed_norm = speed_norm.T
 
-            # ax.streamplot(X,Y,speed_x,speed_y,density=0.6,color='w')
-            im = ax.pcolormesh(X,Y,speed_norm,alpha=0.6)
-            
-            ax.set_xlim(down_lim,up_lim)
-            ax.set_ylim(down_lim,up_lim)
+                # ax.streamplot(X,Y,speed_x,speed_y,density=0.6,color='w')
+                im = ax.pcolormesh(X,Y,speed_norm,alpha=0.6)
+                
+                ax.set_xlim(down_lim,up_lim)
+                ax.set_ylim(down_lim,up_lim)
 
-            if seg_order == 0:
-                ax.set_ylabel(input_type_list[input_order]+' PC 2')
-            if input_order == len(inputs_list)-1:
-                ax.set_xlabel('PC 1')
-            if input_order == 0:
-                ax.set_title(title+' Time: '+str(time_len))
-            # order +=1
+                if seg_order == 0:
+                    ax.set_ylabel(input_type_list[input_order%len(inputs_list)]+' PC 2')
+                if input_order == 2*len(inputs_list)-1:
+                    ax.set_xlabel('PC 1')
+                if input_order == 0:
+                    ax.set_title(title+' Time: '+str(time_len))
+                # order +=1
 
-        clb = plt.colorbar(im)
-        clb.set_label(label='log2speed')
+            clb = plt.colorbar(im)
+            clb.set_label(label='log2speed')
 
-    # fig5 = plt.figure(figsize=(12,12))    
-    # for i in range(len(seg_list)):
-    #     # ax = fig4.add_subplot(2,len(seg_list),i+1)
-    #     # ax = axes[i]
-    #     ax = plt.subplot(1,len(seg_list),i+1)
-    #     # im = ax.imshow(speed_norm_list[i], cmap=plt.cm.hot_r)
-    #     im = ax.pcolormesh(x,y,speed_norm_list[i],alpha=0.7)
-    #     ax.set_xlabel('PC 1')
-    #     ax.set_ylabel('PC 2')
-        # ax.set_title('Time: '+str(time_len))
-    
-    plt.show()
+        return fig
+
+    fig4 = plot_pic('PCA')
+    fig5 = plot_pic('SVD')
+    # plt.show()
   
     # 指定图片保存路径
     if not os.path.exists(figure_save_path):
@@ -574,6 +513,7 @@ for run_batch_num in range(1,6):
 
     fig0.savefig(os.path.join(figure_save_path , str(run_batch_num)+'_0'))
     fig4.savefig(os.path.join(figure_save_path , str(run_batch_num)+'_4'))
+    fig5.savefig(os.path.join(figure_save_path , str(run_batch_num)+'_5'))
     # fig5.savefig(os.path.join(figure_save_path , str(run_batch_num)+'_5'))
 
     # fig4 = plt.figure(figsize=(12,12))

@@ -66,7 +66,7 @@ class PerceptualDecisionMaking(ngym.TrialEnv): # 父类: TrialEnv
         name = {'fixation': 0, 'choice': range(1, dim_ring+1)} # action 要么不动, 要么给choice
         self.action_space = spaces.Discrete(1+dim_ring, name=name) # box: 多维连续空间 discrete: 一维离散
 
-    def _new_trial(self, **kwargs):
+    def _new_trial(self, train_bool=True, **kwargs):
         """
         new_trial() is called when a trial ends to generate the next trial.
         The following variables are created:
@@ -97,7 +97,8 @@ class PerceptualDecisionMaking(ngym.TrialEnv): # 父类: TrialEnv
         stim = np.cos(self.theta - stim_theta) * (coh/200) * 2 + 0.5 #[0, pi] or [-pi, 0] -- [1, -1] or [-1, 1]
         self.add_ob(stim, 'stimulus', where='stimulus')
         # self.add_ob(stim, 'stimulus1', where='stimulus')
-        self.add_randn(0, self.sigma, 'stimulus', where='stimulus') # noise mu = 0 stimulus加噪声
+        if train_bool == True:
+            self.add_randn(0, self.sigma, 'stimulus', where='stimulus') # noise mu = 0 stimulus加噪声
         # self.add_randn(0, self.sigma, 'stimulus1', where='stimulus') # noise mu = 0 stimulus加噪声
 
         # Ground truth
